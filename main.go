@@ -3,9 +3,16 @@ package main
 import (
 	// "fmt"
 
+	"log"
+
 	"github.com/adamfrenzen/gohst/internal/websocket"
 )
 
 func main() {
-	websocket.StartServer("localhost:64057")
+	server := websocket.NewServer()
+	err := server.Start("localhost:64057")
+
+	if err != nil {
+		log.Fatalf("Server error: %v", err)
+	}
 }

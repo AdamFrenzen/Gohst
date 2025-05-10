@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -8,58 +9,84 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-var (
+type Server struct {
+	upgrader   websocket.Upgrader
 	mu         sync.Mutex
 	activeConn *websocket.Conn
-)
+}
 
-// StartServer starts a WebSocket server on the given address.
-func StartServer(addr string) {
-	http.HandleFunc("/ws", handleWebSocket)
-
-	log.Printf("WebSocket server listening on %s/ws\n", addr)
-	err := http.ListenAndServe(addr, nil)
-	if err != nil {
-		log.Fatalf("Server error: %v", err)
+func NewServer() *Server {
+	return &Server{
+		upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		},
 	}
 }
 
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	if activeConn != nil {
-		mu.Unlock()
+func (s *Server) Start(addr string) error {
+	http.HandleFunc("/ws", s.handleWebSocket)
+
+	log.Printf("WebSocket server listening on %s/ws\n", addr)
+	return http.ListenAndServe(addr, nil)
+}
+
+func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := s.handleSingleConnection(w, r)
+
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	s.mu.Lock()
+	s.activeConn = conn
+	s.mu.Unlock()
+
+	defer s.closeConnection()
+	s.readMessages()
+}
+
+func (s *Server) handleSingleConnection(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.activeConn != nil {
 		http.Error(w, "A client is already connected", http.StatusServiceUnavailable)
 		log.Println("Rejected a new connection: already connected")
-		return
+		return nil, fmt.Errorf("a client is already connected")
 	}
-	conn, err := upgrader.Upgrade(w, r, nil)
+
+	conn, err := s.upgrader.Upgrade(w, r, nil)
+
 	if err != nil {
-		mu.Unlock()
 		log.Println("Upgrade error:", err)
-		return
+		return nil, err
 	}
-	activeConn = conn
-	mu.Unlock()
 
-	log.Println("Client connected")
+	return conn, nil
+}
 
-	defer func() {
-		conn.Close()
+func (s *Server) closeConnection() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.activeConn != nil {
+		s.activeConn.Close()
+		s.activeConn = nil
 		log.Println("Client disconnected")
-		mu.Lock()
-		activeConn = nil
-		mu.Unlock()
-	}()
+	}
+}
 
+func (s *Server) readMessages() {
 	for {
+		s.mu.Lock()
+		conn := s.activeConn
+		s.mu.Unlock()
+
 		// Read message from client
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
