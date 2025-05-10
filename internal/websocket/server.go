@@ -56,8 +56,7 @@ func (s *Server) handleSingleConnection(w http.ResponseWriter, r *http.Request) 
 
 	if s.activeConn != nil {
 		http.Error(w, "A client is already connected", http.StatusServiceUnavailable)
-		log.Println("Rejected a new connection: already connected")
-		return nil, fmt.Errorf("a client is already connected")
+		return nil, fmt.Errorf("Rejected a new connection: already connected")
 	}
 
 	conn, err := s.upgrader.Upgrade(w, r, nil)
