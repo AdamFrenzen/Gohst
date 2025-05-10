@@ -1,15 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
+	// "fmt"
+
+	"github.com/adamfrenzen/gohst/internal/websocket"
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello from Gohst!")
-	})
-	
-	fmt.Println("Server running on http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	websocket.StartServer("localhost:64057")
 }
