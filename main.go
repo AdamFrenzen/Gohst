@@ -1,15 +1,13 @@
 package main
 
 import (
-	// "fmt"
-
 	"log"
 
-	"github.com/adamfrenzen/gohst/internal/websocket"
+	"github.com/adamfrenzen/gohst/internal/backend"
 )
 
 func main() {
-	server := websocket.NewServer()
+	server := backend.NewServer()
 	err := server.Start("localhost:64057")
 
 	if err != nil {

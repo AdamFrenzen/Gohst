@@ -1,6 +1,7 @@
-package websocket
+package backend
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,10 +10,16 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type Message struct {
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
+}
+
 type Server struct {
 	upgrader   websocket.Upgrader
 	mu         sync.Mutex
 	activeConn *websocket.Conn
+	router     *Router
 }
 
 func NewServer() *Server {
@@ -24,6 +31,7 @@ func NewServer() *Server {
 				return true
 			},
 		},
+		router: &Router{},
 	}
 }
 
@@ -42,12 +50,10 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.mu.Lock()
-	s.activeConn = conn
-	s.mu.Unlock()
+	log.Println("Client connected")
 
 	defer s.closeConnection()
-	s.readMessages()
+	s.readMessages(conn)
 }
 
 func (s *Server) handleSingleConnection(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
@@ -66,7 +72,8 @@ func (s *Server) handleSingleConnection(w http.ResponseWriter, r *http.Request) 
 		return nil, err
 	}
 
-	return conn, nil
+	s.activeConn = conn
+	return s.activeConn, nil
 }
 
 func (s *Server) closeConnection() {
@@ -80,26 +87,21 @@ func (s *Server) closeConnection() {
 	}
 }
 
-func (s *Server) readMessages() {
+func (s *Server) readMessages(conn *websocket.Conn) {
 	for {
-		s.mu.Lock()
-		conn := s.activeConn
-		s.mu.Unlock()
-
-		// Read message from client
-		messageType, message, err := conn.ReadMessage()
+		_, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("Read error:", err)
 			break
 		}
 
-		log.Printf("Received: %s\n", message)
-
-		// Echo message back to client
-		err = conn.WriteMessage(messageType, message)
+		var msg Message
+		err = json.Unmarshal(message, &msg)
 		if err != nil {
-			log.Println("Write error:", err)
-			break
+			log.Println("JSON unmarshal error:", err)
+			return
 		}
+
+		s.router.RouteMessage(msg.Type, msg.Payload, s)
 	}
 }
