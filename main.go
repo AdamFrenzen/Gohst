@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	server := backend.NewServer()
-	err := server.Start("localhost:64057")
+	websocketServer := backend.NewWebSocketServer()
+	err := websocketServer.Start("localhost:64057")
 
 	if err != nil {
 		log.Fatalf("Server error: %v", err)

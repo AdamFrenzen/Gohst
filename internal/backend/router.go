@@ -11,7 +11,7 @@ func New() *Router {
 	return &Router{}
 }
 
-func (r *Router) RouteMessage(msgType string, payload json.RawMessage, server *Server) {
+func (r *Router) RouteMessage(msgType string, payload json.RawMessage, server *WebSocketServer) {
 	switch msgType {
 	case "chat":
 		var p ChatPayload

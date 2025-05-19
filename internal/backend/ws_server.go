@@ -15,15 +15,15 @@ type Message struct {
 	Payload json.RawMessage `json:"payload"`
 }
 
-type Server struct {
+type WebSocketServer struct {
 	upgrader   websocket.Upgrader
 	mu         sync.Mutex
 	activeConn *websocket.Conn
 	router     *Router
 }
 
-func NewServer() *Server {
-	return &Server{
+func NewWebSocketServer() *WebSocketServer {
+	return &WebSocketServer{
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -35,14 +35,14 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) Start(addr string) error {
+func (s *WebSocketServer) Start(addr string) error {
 	http.HandleFunc("/ws", s.handleWebSocket)
 
 	log.Printf("WebSocket server listening on %s/ws\n", addr)
 	return http.ListenAndServe(addr, nil)
 }
 
-func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+func (s *WebSocketServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.handleSingleConnection(w, r)
 
 	if err != nil {
@@ -56,7 +56,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	s.readMessages(conn)
 }
 
-func (s *Server) handleSingleConnection(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
+func (s *WebSocketServer) handleSingleConnection(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -76,7 +76,7 @@ func (s *Server) handleSingleConnection(w http.ResponseWriter, r *http.Request) 
 	return s.activeConn, nil
 }
 
-func (s *Server) closeConnection() {
+func (s *WebSocketServer) closeConnection() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -87,7 +87,7 @@ func (s *Server) closeConnection() {
 	}
 }
 
-func (s *Server) readMessages(conn *websocket.Conn) {
+func (s *WebSocketServer) readMessages(conn *websocket.Conn) {
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
