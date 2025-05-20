@@ -4,8 +4,9 @@ import (
 	"fmt"
 )
 
-func handleChat(prompt string) {
+func handleChat(prompt string, ws *WebSocketServer) {
 	fmt.Println("response to", prompt)
+	ws.SendMessage(ChatResponsePayload{Response: "HEY"})
 }
 
 func handleEcho() {

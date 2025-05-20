@@ -31,7 +31,7 @@ func NewWebSocketServer() *WebSocketServer {
 				return true
 			},
 		},
-		router: &Router{},
+		router: NewRouter(),
 	}
 }
 
@@ -95,13 +95,24 @@ func (s *WebSocketServer) readMessages(conn *websocket.Conn) {
 			break
 		}
 
-		var msg Message
-		err = json.Unmarshal(message, &msg)
-		if err != nil {
-			log.Println("JSON unmarshal error:", err)
-			return
-		}
-
-		s.router.RouteMessage(msg.Type, msg.Payload, s)
+		go s.decodeAndRoute(message)
 	}
+}
+
+func (s *WebSocketServer) decodeAndRoute(message []byte) {
+	var msg Message
+	err := json.Unmarshal(message, &msg)
+	if err != nil {
+		log.Println("JSON unmarshal error:", err)
+		return
+	}
+
+	s.router.RouteMessage(msg.Type, msg.Payload, s)
+}
+
+func (s *WebSocketServer) SendMessage(payload any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.activeConn.WriteJSON(payload)
 }

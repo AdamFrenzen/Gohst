@@ -7,11 +7,11 @@ import (
 
 type Router struct{}
 
-func New() *Router {
+func NewRouter() *Router {
 	return &Router{}
 }
 
-func (r *Router) RouteMessage(msgType string, payload json.RawMessage, server *WebSocketServer) {
+func (r *Router) RouteMessage(msgType string, payload json.RawMessage, ws *WebSocketServer) {
 	switch msgType {
 	case "chat":
 		var p ChatPayload
@@ -19,7 +19,7 @@ func (r *Router) RouteMessage(msgType string, payload json.RawMessage, server *W
 			log.Println("Chat payload error:", err)
 			return
 		}
-		go handleChat(p.Prompt)
+		go handleChat(p.Prompt, ws)
 
 	case "echo":
 		var p EchoPayload
